@@ -1,8 +1,4 @@
-﻿using DapperSqlConstructor.Pages;
-using Microsoft.Extensions.Primitives;
-using System.Data.Common;
-using System.Drawing;
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
 
 namespace DapperSqlConstructor.Models

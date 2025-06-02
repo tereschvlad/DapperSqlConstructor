@@ -3,4 +3,107 @@
 @{
 }
 
-<h1>SqlConstruct</h1>
+<div class="row">
+	<div class="col-4 border-end">
+		<form method="POST" enctype="multipart/form-data">
+			<div class="mb-3">
+				<label asp-for="SqlScriptFile" class="form-label">Download file with scripts</label>
+				<input type="file" asp-for="SqlScriptFile" class="form-control" />
+                <span asp-validation-for="SqlScriptFile" class="text-danger"></span>
+			</div>
+			<div class="mb-3">
+				<label asp-for="ModelClassesFile" class="form-label">Download file with related models</label>
+				<input type="file" asp-for="ModelClassesFile" class="form-control" />
+                <span asp-validation-for="ModelClassesFile" class="text-danger"></span>
+			</div>
+			<div class="align-content-center">
+				<input type="submit" class="btn btn-info w-25" value="Send" />
+			</div>
+		</form>
+	</div>
+	<div class="col">
+		<h2>Example for sql scripts</h2>
+		<pre>
+			<code>
+				CREATE TABLE PARENT_TABLE (
+					PARENT_ID          NUMBER PRIMARY KEY,
+					PARENT_NAME        VARCHAR2(100),
+					DESCRIPTION        VARCHAR2(255),
+					CREATED_AT         DATE DEFAULT SYSDATE,
+					STATUS             VARCHAR2(20),
+					IS_ACTIVE          CHAR(1),
+					CREATED_BY         VARCHAR2(50),
+					UPDATED_AT         DATE,
+					UPDATED_BY         VARCHAR2(50),
+					REMARKS            VARCHAR2(255)
+					);
+			</code>
+		</pre>
+
+		<h2>Example for related models</h2>
+		<pre>
+			<code>
+                /// &lt;summary&gt;
+                /// PARENT_TABLE
+                /// &lt;/summary&gt;
+                public class ParentTable
+                {
+                    /// &lt;summary&gt;
+                    /// PARENT_ID
+                    /// &lt;/summary&gt;
+                    public int parentId { get; set; }
+
+                    /// &lt;summary&gt;
+                    /// PARENT_NAME
+                    /// &lt;/summary&gt;
+                    public string parentName { get; set; }
+
+                    /// &lt;summary&gt;
+                    /// DESCRIPTION
+                    /// &lt;/summary&gt;
+                    public string description { get; set; }
+
+                    /// &lt;summary&gt;
+                    /// CREATED_AT
+                    /// &lt;/summary&gt;
+                    public DateTime createdAt { get; set; }
+
+                    /// &lt;summary&gt;
+                    /// STATUS
+                    /// &lt;/summary&gt;
+                    public string status { get; set; }
+
+                    /// &lt;summary&gt;
+                    /// IS_ACTIVE
+                    /// &lt;/summary&gt;
+                    public string isActive { get; set; }
+
+                    /// &lt;summary&gt;
+                    /// CREATED_BY
+                    /// &lt;/summary&gt;
+                    public string createdBy { get; set; }
+
+                    /// &lt;summary&gt;
+                    /// UPDATED_AT
+                    /// &lt;/summary&gt;
+                    public DateTime? updatedAt { get; set; }
+
+                    /// &lt;summary&gt;
+                    /// UPDATED_BY
+                    /// &lt;/summary&gt;
+                    public string updatedBy { get; set; }
+
+                    /// &lt;summary&gt;
+                    /// REMARKS
+                    /// &lt;/summary&gt;
+                    public string remarks { get; set; }
+
+                    /// &lt;summary&gt;
+                    /// CHILD_TABLE 
+                    /// &lt;/summary&gt;
+                    public List<ChildTable> children { get; set; }
+                }
+			</code>
+		</pre>
+	</div>
+</div>
