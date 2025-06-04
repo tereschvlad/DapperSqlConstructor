@@ -49,6 +49,9 @@ namespace DapperSqlConstructor.Pages
             var builder = new DapperMethodBuilder(SqlScripts, ConnectedClasses);
             builder.ParseTableProperties();
 
+            ViewData["SelectMethod"] = builder.SqlSelectMethod;
+            ViewData["SelectRequest"] = builder.SqlSelectRequest;
+
             return Page();
         }
     }

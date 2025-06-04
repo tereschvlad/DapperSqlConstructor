@@ -18,9 +18,15 @@ namespace DapperSqlConstructor.Models
 
         private Queue<string> _queueSelectTables;
 
+
         private string _sqlSelectRequest;
 
+        public string SqlSelectRequest => _sqlSelectRequest;
+
+
         private string _sqlSelectMethod;
+
+        public string SqlSelectMethod => _sqlSelectMethod;
 
         public DapperMethodBuilder(string createdTableScript, string mappedClasses)
         {
@@ -37,12 +43,16 @@ namespace DapperSqlConstructor.Models
             //Matches only tables parts of script
             var matches = Regex.Matches(TableScriptString, "table.*?[)];", RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-            var tableRegex = new Regex("table|[)]", RegexOptions.IgnoreCase);
-
-            string[] keyWords = new string[] { "CONSTRAINT", "FOREIGN", "REFERENCES" };
-
             if (matches.Any())
             {
+                //Initialise regex patterns
+                var tableKeyWordPart = new Regex("table|[)]", RegexOptions.IgnoreCase);
+                var tablePart = new Regex("table\\s[a-zA-Z0-9_]+\\s", RegexOptions.IgnoreCase);
+                var foreignKeyPart = new Regex("FOREIGN\\sKEY\\s*\\(\\s*(.*?)\\s*\\).*?REFERENCES\\s*?(.*?)\\s*?\\(\\s*?(.*?)\\s*?\\)",
+                                               RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+                string[] keyWords = new string[] { "CONSTRAINT", "FOREIGN", "REFERENCES" };
+
                 //Loop tables matches
                 foreach (var match in matches.ToList())
                 {
@@ -54,8 +64,8 @@ namespace DapperSqlConstructor.Models
                         };
 
                         //Get text for only table
-                        var tableMatch = Regex.Match(match.Value, "table\\s[a-zA-Z0-9_]+\\s", RegexOptions.IgnoreCase);
-                        genTable.TableName = tableRegex.Replace(tableMatch.Value, "", 1).Trim();
+                        var tableMatch = tablePart.Match(match.Value);
+                        genTable.TableName = tableKeyWordPart.Replace(tableMatch.Value, "", 1).Trim();
 
                         var startPoint = match.Value.IndexOf("(");
                         var endPoint = match.Value.IndexOf(");");
@@ -76,7 +86,7 @@ namespace DapperSqlConstructor.Models
                         }
 
                         //Get data about foreign keyses
-                        var foreighKeyMatches = Regex.Matches(match.Value, "FOREIGN\\sKEY\\s*\\(\\s*(.*?)\\s*\\).*?REFERENCES\\s*?(.*?)\\s*?\\(\\s*?(.*?)\\s*?\\)", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                        var foreighKeyMatches = foreignKeyPart.Matches(match.Value);
 
                         if(foreighKeyMatches.Any())
                         {
@@ -122,16 +132,20 @@ namespace DapperSqlConstructor.Models
         /// </summary>
         public void ParseModelString()
         {
+
             var matches = Regex.Matches(MappedClassesString, "///\\s*?<summary>.*?}\\s*}", RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
             if (matches.Any())
             {
+                //Initialise regex patterns
+                var commentClassPart = new Regex("\\(\\s*?Table:\\s*?(.*?)\\).*?public class (\\w+)", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                var commentPropertyPart = new Regex("\\(\\s*?Column:\\s*?(.*?)\\).*?public\\s*?[\\w\\?<>]+\\s*?(\\w+)\\s*?{\\s*?get;\\s*?set;\\s*?}",
+                                                     RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
                 foreach (var match in matches.ToList())
                 {
-                    var tableDataStr = Regex.Match(match.Value, "///\\s*?<summary>\\s*///(.*?)///\\s</summary>\\s*public class (\\w+)",
-                                                   RegexOptions.IgnoreCase | RegexOptions.Singleline);
-
-                    var propertiesDataStr = Regex.Matches(match.Value, "///\\s*?<summary>\\s*?///\\s*?(\\w+)\\s*?///\\s*?</summary>\\s*?public\\s*?[\\w\\?<>]+\\s*?(\\w+)\\s*?{\\s*?get;\\s*?set;\\s*?}");
+                    var tableDataStr = commentClassPart.Match(match.Value);
+                    var propertiesDataStr = commentPropertyPart.Matches(match.Value);
 
                     if (tableDataStr.Groups.Count > 2)
                     {
@@ -151,7 +165,7 @@ namespace DapperSqlConstructor.Models
                                     var colRelated = propertyDataStr.Groups[1].Value?.Trim();
                                     var propName = propertyDataStr.Groups[2].Value?.Trim();
 
-                                    if (dTable.Colums.ContainsKey(propertyDataStr.Groups[1].Value))
+                                    if (dTable.Colums.ContainsKey(colRelated))
                                         dTable.Colums[colRelated] = propName;
                                 }
                             }

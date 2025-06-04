@@ -20,90 +20,117 @@
 				<input type="submit" class="btn btn-info w-25" value="Send" />
 			</div>
 		</form>
+        <div class="container my-5">
+            <h2>Rules how it works.</h2>
+            <p>
+                You should load file with classes of models and load file with scripts for creating tables for this classes. 
+            </p>
+        </div>
 	</div>
 	<div class="col">
 		<h2>Example for sql scripts</h2>
 		<pre>
 			<code>
-				CREATE TABLE PARENT_TABLE (
-					PARENT_ID          NUMBER PRIMARY KEY,
-					PARENT_NAME        VARCHAR2(100),
-					DESCRIPTION        VARCHAR2(255),
-					CREATED_AT         DATE DEFAULT SYSDATE,
-					STATUS             VARCHAR2(20),
-					IS_ACTIVE          CHAR(1),
-					CREATED_BY         VARCHAR2(50),
-					UPDATED_AT         DATE,
-					UPDATED_BY         VARCHAR2(50),
-					REMARKS            VARCHAR2(255)
-					);
+CREATE TABLE PARENT_TABLE (
+    PARENT_ID          NUMBER PRIMARY KEY,
+    PARENT_NAME        VARCHAR2(100),
+    DESCRIPTION        VARCHAR2(255),
+    CREATED_AT         DATE DEFAULT SYSDATE,
+    STATUS             VARCHAR2(20),
+    IS_ACTIVE          CHAR(1),
+    CREATED_BY         VARCHAR2(50),
+    UPDATED_AT         DATE,
+    UPDATED_BY         VARCHAR2(50),
+    REMARKS            VARCHAR2(255)
+    );
 			</code>
 		</pre>
 
 		<h2>Example for related models</h2>
 		<pre>
 			<code>
-                /// &lt;summary&gt;
-                /// PARENT_TABLE
-                /// &lt;/summary&gt;
-                public class ParentTable
-                {
-                    /// &lt;summary&gt;
-                    /// PARENT_ID
-                    /// &lt;/summary&gt;
-                    public int parentId { get; set; }
+/// &lt;summary&gt;
+/// PARENT_TABLE
+/// &lt;/summary&gt;
+public class ParentTable
+{
+    /// &lt;summary&gt;
+    /// PARENT_ID
+    /// &lt;/summary&gt;
+    public int parentId { get; set; }
 
-                    /// &lt;summary&gt;
-                    /// PARENT_NAME
-                    /// &lt;/summary&gt;
-                    public string parentName { get; set; }
+    /// &lt;summary&gt;
+    /// PARENT_NAME
+    /// &lt;/summary&gt;
+    public string parentName { get; set; }
 
-                    /// &lt;summary&gt;
-                    /// DESCRIPTION
-                    /// &lt;/summary&gt;
-                    public string description { get; set; }
+    /// &lt;summary&gt;
+    /// DESCRIPTION
+    /// &lt;/summary&gt;
+    public string description { get; set; }
 
-                    /// &lt;summary&gt;
-                    /// CREATED_AT
-                    /// &lt;/summary&gt;
-                    public DateTime createdAt { get; set; }
+    /// &lt;summary&gt;
+    /// CREATED_AT
+    /// &lt;/summary&gt;
+    public DateTime createdAt { get; set; }
 
-                    /// &lt;summary&gt;
-                    /// STATUS
-                    /// &lt;/summary&gt;
-                    public string status { get; set; }
+    /// &lt;summary&gt;
+    /// STATUS
+    /// &lt;/summary&gt;
+    public string status { get; set; }
 
-                    /// &lt;summary&gt;
-                    /// IS_ACTIVE
-                    /// &lt;/summary&gt;
-                    public string isActive { get; set; }
+    /// &lt;summary&gt;
+    /// IS_ACTIVE
+    /// &lt;/summary&gt;
+    public string isActive { get; set; }
 
-                    /// &lt;summary&gt;
-                    /// CREATED_BY
-                    /// &lt;/summary&gt;
-                    public string createdBy { get; set; }
+    /// &lt;summary&gt;
+    /// CREATED_BY
+    /// &lt;/summary&gt;
+    public string createdBy { get; set; }
 
-                    /// &lt;summary&gt;
-                    /// UPDATED_AT
-                    /// &lt;/summary&gt;
-                    public DateTime? updatedAt { get; set; }
+    /// &lt;summary&gt;
+    /// UPDATED_AT
+    /// &lt;/summary&gt;
+    public DateTime? updatedAt { get; set; }
 
-                    /// &lt;summary&gt;
-                    /// UPDATED_BY
-                    /// &lt;/summary&gt;
-                    public string updatedBy { get; set; }
+    /// &lt;summary&gt;
+    /// UPDATED_BY
+    /// &lt;/summary&gt;
+    public string updatedBy { get; set; }
 
-                    /// &lt;summary&gt;
-                    /// REMARKS
-                    /// &lt;/summary&gt;
-                    public string remarks { get; set; }
+    /// &lt;summary&gt;
+    /// REMARKS
+    /// &lt;/summary&gt;
+    public string remarks { get; set; }
 
-                    /// &lt;summary&gt;
-                    /// CHILD_TABLE 
-                    /// &lt;/summary&gt;
-                    public List<ChildTable> children { get; set; }
-                }
+    /// &lt;summary&gt;
+    /// CHILD_TABLE 
+    /// &lt;/summary&gt;
+    public List&lt;ChildTable&gt; children { get; set; }
+}
 			</code>
 		</pre>
+
+        @if (ViewData["SelectMethod"] != null)
+        {
+            <h2>Result for select method</h2>
+            <pre>
+                <code>
+                      @ViewData["SelectMethod"]
+                </code>
+            </pre>
+        }
+
+        @if (ViewData["SelectRequest"] != null)
+        {
+            <h2>Result for select method</h2>
+            <pre>
+                <code>
+                      @ViewData["SelectRequest"]
+                </code>
+            </pre>
+        }
+        
 	</div>
 </div>
