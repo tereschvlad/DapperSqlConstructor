@@ -33,6 +33,7 @@ namespace DapperSqlConstructor.Models
             TableScriptString = createdTableScript;
             MappedClassesString = mappedClasses;
             MappedTables = new List<MappedTableModel>();
+            PrefixValueChar = ':';
         }
 
         /// <summary>
@@ -51,7 +52,7 @@ namespace DapperSqlConstructor.Models
                 var foreignKeyPart = new Regex("FOREIGN\\sKEY\\s*\\(\\s*(.*?)\\s*\\).*?REFERENCES\\s*?(.*?)\\s*?\\(\\s*?(.*?)\\s*?\\)",
                                                RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-                string[] keyWords = new string[] { "CONSTRAINT", "FOREIGN", "REFERENCES" };
+                string[] keyWords = new string[] { "CONSTRAINT", "FOREIGN", "REFERENCES", "ON" };
 
                 //Loop tables matches
                 foreach (var match in matches.ToList())
@@ -231,7 +232,7 @@ namespace DapperSqlConstructor.Models
                         joinCondition.Append($"{childNTable}.{fk.Key} = {parentNTable}.{fk.Value}");
                 }
 
-                joinPart.Append(joinStr).Append(joinCondition);
+                joinPart.AppendLine(joinStr.ToString()).Append(joinCondition);
 
                 foreach (var childColumn in childTable.Colums)
                 {
@@ -283,18 +284,18 @@ namespace DapperSqlConstructor.Models
             generalTypeStr.Append($"{firstTableData.RelatedClass}");
 
             _sqlSelectMethod = $@"public async Get{mainTable.RelatedClass}List()
-                                  {{
-                                        using var connection = new SqlConnection(_connectionString);
-                                        var command = @$""{_sqlSelectRequest}"";
-                                        
-                                        return await  connection.QueryAsync<{generalTypeStr.ToString()}>(
-                                        command,
-                                        ({argumentsFuncPart.ToString()})
-                                        {{
-                                            return arg1;
-                                        }},
-                                        splitOn: ""{splitStr.ToString()}""
-                                  }}";
+{{
+      using var connection = new SqlConnection(_connectionString);
+      var command = @$""{_sqlSelectRequest}"";
+      
+      return await  connection.QueryAsync<{generalTypeStr.ToString()}>(
+      command,
+      ({argumentsFuncPart.ToString()})
+      {{
+          return arg1;
+      }},
+      splitOn: ""{splitStr.ToString()}""
+}}";
 
         }
 
@@ -322,15 +323,16 @@ namespace DapperSqlConstructor.Models
                 sqlInsCol.Append(")");
                 sqlInsVal.Append(")");
 
-                dataInfo.InsertStringMethod = $@"public async Task Insert{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} item)
-                                                 {{
-                                                    var sql = @$""{sqlInsCol.ToString()}{sqlInsVal.ToString()}"";
+                dataInfo.InsertStringMethod = $@"
+public async Task Insert{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} item)
+{{
+   var sql = @$""{sqlInsCol.ToString()}{sqlInsVal.ToString()}"";
 
-                                                    using var connection = new SqlConnection(_connectionString);
-                                                    await connection.OpenAsync();
-                                                    
-                                                    await connection.ExecuteAsync(sql, item);
-                                                 }}";
+   using var connection = new SqlConnection(_connectionString);
+   await connection.OpenAsync();
+   
+   await connection.ExecuteAsync(sql, item);
+}}";
             }
         }
 
@@ -338,7 +340,7 @@ namespace DapperSqlConstructor.Models
         {
             foreach (var dataInfo in MappedTables)
             {
-                var sqlStr = new StringBuilder($"UPDATE {dataInfo.TableName} SET ");
+                var sqlStr = new StringBuilder($"UPDATE {dataInfo.TableName} ");
 
                 var firstItem = dataInfo.Colums.First();
                 var lastItem = dataInfo.Colums.Last();
@@ -347,24 +349,27 @@ namespace DapperSqlConstructor.Models
                 {
                     if (firstItem.Key == colomn.Key)
                         continue;
+                    else
+                        sqlStr.AppendLine("SET ");
 
-                    sqlStr.Append($"{colomn.Key}={{nameof({PrefixValueChar}{dataInfo.RelatedClass}{colomn.Value})}}");
+                    sqlStr.Append($"{colomn.Key} = {PrefixValueChar}{{nameof({dataInfo.RelatedClass}.{colomn.Value})}}");
 
-                    if (lastItem.Key == colomn.Key)
+                    if (lastItem.Key != colomn.Key)
                         sqlStr.AppendLine(", ");
                 }
 
-                sqlStr.AppendLine($"WHERE {firstItem.Key}={{nameof({PrefixValueChar}{firstItem.Value})}}");
+                sqlStr.AppendLine($" WHERE {firstItem.Key} = {PrefixValueChar}{{nameof({dataInfo.RelatedClass}.{firstItem.Value})}}");
 
-                dataInfo.InsertStringMethod = $@"public async Task Update{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} item)
-                                                 {{
-                                                    var sql = @$""{sqlStr.ToString()}"";
+                dataInfo.UpdateStringMethod = $@"
+public async Task Update{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} item)
+{{
+   var sql = @$""{sqlStr.ToString()}"";
 
-                                                    using var connection = new SqlConnection(_connectionString);
-                                                    await connection.OpenAsync();
-                                                    
-                                                    await connection.ExecuteAsync(sql, item);
-                                                 }}";
+   using var connection = new SqlConnection(_connectionString);
+   await connection.OpenAsync();
+   
+   await connection.ExecuteAsync(sql, item);
+}}";
             }
         }
 

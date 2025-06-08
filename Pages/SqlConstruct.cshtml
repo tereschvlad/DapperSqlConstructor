@@ -3,134 +3,108 @@
 @{
 }
 
-<div class="row">
-	<div class="col-4 border-end">
-		<form method="POST" enctype="multipart/form-data">
-			<div class="mb-3">
-				<label asp-for="SqlScriptFile" class="form-label">Download file with scripts</label>
-				<input type="file" asp-for="SqlScriptFile" class="form-control" />
+<div class="row h-100">
+	<div class="col-3 border-end d-flex flex-column">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label asp-for="SqlScriptFile" class="form-label">Download file with scripts</label>
+                <input type="file" asp-for="SqlScriptFile" class="form-control" />
                 <span asp-validation-for="SqlScriptFile" class="text-danger"></span>
-			</div>
-			<div class="mb-3">
-				<label asp-for="ModelClassesFile" class="form-label">Download file with related models</label>
-				<input type="file" asp-for="ModelClassesFile" class="form-control" />
+            </div>
+            <div class="mb-3">
+                <label asp-for="ModelClassesFile" class="form-label">Download file with related models</label>
+                <input type="file" asp-for="ModelClassesFile" class="form-control" />
                 <span asp-validation-for="ModelClassesFile" class="text-danger"></span>
-			</div>
-			<div class="align-content-center">
-				<input type="submit" class="btn btn-info w-25" value="Send" />
-			</div>
-		</form>
+            </div>
+            <div class="align-content-center">
+                <input type="submit" class="btn btn-info w-25" value="Send" />
+            </div>
+        </form>
         <div class="container my-5">
             <h2>Rules how it works.</h2>
             <p>
-                You should load file with classes of models and load file with scripts for creating tables for this classes. 
+                You should load file with classes of models and load file with scripts for creating tables for this classes.
             </p>
         </div>
 	</div>
 	<div class="col">
-		<h2>Example for sql scripts</h2>
-		<pre>
-			<code>
-CREATE TABLE PARENT_TABLE (
-    PARENT_ID          NUMBER PRIMARY KEY,
-    PARENT_NAME        VARCHAR2(100),
-    DESCRIPTION        VARCHAR2(255),
-    CREATED_AT         DATE DEFAULT SYSDATE,
-    STATUS             VARCHAR2(20),
-    IS_ACTIVE          CHAR(1),
-    CREATED_BY         VARCHAR2(50),
-    UPDATED_AT         DATE,
-    UPDATED_BY         VARCHAR2(50),
-    REMARKS            VARCHAR2(255)
-    );
-			</code>
-		</pre>
-
-		<h2>Example for related models</h2>
-		<pre>
-			<code>
-/// &lt;summary&gt;
-/// PARENT_TABLE
-/// &lt;/summary&gt;
-public class ParentTable
-{
-    /// &lt;summary&gt;
-    /// PARENT_ID
-    /// &lt;/summary&gt;
-    public int parentId { get; set; }
-
-    /// &lt;summary&gt;
-    /// PARENT_NAME
-    /// &lt;/summary&gt;
-    public string parentName { get; set; }
-
-    /// &lt;summary&gt;
-    /// DESCRIPTION
-    /// &lt;/summary&gt;
-    public string description { get; set; }
-
-    /// &lt;summary&gt;
-    /// CREATED_AT
-    /// &lt;/summary&gt;
-    public DateTime createdAt { get; set; }
-
-    /// &lt;summary&gt;
-    /// STATUS
-    /// &lt;/summary&gt;
-    public string status { get; set; }
-
-    /// &lt;summary&gt;
-    /// IS_ACTIVE
-    /// &lt;/summary&gt;
-    public string isActive { get; set; }
-
-    /// &lt;summary&gt;
-    /// CREATED_BY
-    /// &lt;/summary&gt;
-    public string createdBy { get; set; }
-
-    /// &lt;summary&gt;
-    /// UPDATED_AT
-    /// &lt;/summary&gt;
-    public DateTime? updatedAt { get; set; }
-
-    /// &lt;summary&gt;
-    /// UPDATED_BY
-    /// &lt;/summary&gt;
-    public string updatedBy { get; set; }
-
-    /// &lt;summary&gt;
-    /// REMARKS
-    /// &lt;/summary&gt;
-    public string remarks { get; set; }
-
-    /// &lt;summary&gt;
-    /// CHILD_TABLE 
-    /// &lt;/summary&gt;
-    public List&lt;ChildTable&gt; children { get; set; }
-}
-			</code>
-		</pre>
-
-        @if (ViewData["SelectMethod"] != null)
-        {
-            <h2>Result for select method</h2>
-            <pre>
-                <code>
-                      @ViewData["SelectMethod"]
-                </code>
-            </pre>
-        }
-
-        @if (ViewData["SelectRequest"] != null)
-        {
-            <h2>Result for select method</h2>
-            <pre>
-                <code>
-                      @ViewData["SelectRequest"]
-                </code>
-            </pre>
-        }
-        
-	</div>
+        <div class="accordion w-100" id="accordionSql">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingOne">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                        Example for sql scripts
+                    </button>
+                </h2>
+                <div class="accordion-collapse collapse show" id="collapseOne" aria-labelledby="headingOne" data-bs-parent="#accordionSql">
+                    <div class="accordion-body">
+                        <pre>
+                        <code>@Model.ExampleTableSqlScripts</code>
+                        </pre>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingSecond">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSecond" aria-expanded="false" aria-controls="collapseSecond">
+                        Example for related models
+                    </button>
+                </h2>
+                <div class="accordion-collapse collapse" id="collapseSecond" aria-labelledby="headingSecond" data-bs-parent="#accordionSql">
+                    <div class="accordion-body">
+                        <pre>
+                        <code>@Model.ExampleClassModels</code>
+                        </pre>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingThird">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThird" aria-expanded="false" aria-controls="collapseThird">
+                        Result select method
+                    </button>
+                </h2>
+                <div class="accordion-collapse collapse" id="collapseThird" aria-labelledby="headingThird" data-bs-parent="#accordionSql">
+                    <div class="accordion-body">
+                        <pre>
+                            <code>
+                                @Model.SelectMethod
+                            </code>
+                        </pre>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingFourth">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFourth" aria-expanded="false" aria-controls="collapseFourth">
+                        Result of insert methods
+                    </button>
+                </h2>
+                <div class="accordion-collapse collapse" id="collapseFourth" aria-labelledby="headingFourth" data-bs-parent="#accordionSql">
+                    <div class="accordion-body">
+                        <pre>
+                            <code>
+                                @Model.InsertsMethods
+                            </code>
+                        </pre>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingFifth">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFifth" aria-expanded="false" aria-controls="collapseFifth">
+                        Result of update methods
+                    </button>
+                </h2>
+                <div class="accordion-collapse collapse" id="collapseFifth" aria-labelledby="headingFifth" data-bs-parent="#accordionSql">
+                    <div class="accordion-body">
+                        <pre>
+                            <code>
+                                @Model.UpdateMethods
+                            </code>
+                        </pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
