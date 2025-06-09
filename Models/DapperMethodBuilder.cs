@@ -35,12 +35,20 @@ namespace DapperSqlConstructor.Models
         private Queue<string> _queueSelectTables;
 
 
-        private string _sqlSelectRequest;
+        private string _sqlSelectRequestMethod;
 
         /// <summary>
-        /// Includes select sql request with mapping part
+        /// Includes select sql for method request with mapping part
         /// </summary>
-        public string SqlSelectRequest => _sqlSelectRequest;
+        public string SqlSelectRequestMethod => _sqlSelectRequestMethod;
+
+
+        private string _sqlSelectRequestSimple;
+
+        /// <summary>
+        /// Includes simple sql request with mapping part
+        /// </summary>
+        public string SqlSelectRequestSimple => _sqlSelectRequestSimple;
 
 
         private string _sqlSelectMethod;
@@ -204,14 +212,13 @@ namespace DapperSqlConstructor.Models
         public void ConstructSqlSelectRequest()
         {
             var indexTable = 1;
-            var parentNTable = $"t{indexTable}";
+            var parentAliasTable = $"t{indexTable}";
 
             StringBuilder sqlScript = new StringBuilder("SELECT ");
 
             var tableData = MappedTables.FirstOrDefault(x => x.ReferencesTables == null);
-            var fromPart = new StringBuilder($" FROM {tableData.TableName} {parentNTable} ");
-
-            var selectPart = new StringBuilder();
+            var selectMethodPart = new StringBuilder();
+            var simpleSelectPart = new StringBuilder();
             var joinPart = new StringBuilder();
 
             _queueSelectTables = new Queue<string>();
@@ -219,20 +226,26 @@ namespace DapperSqlConstructor.Models
 
             foreach (var column in tableData.Colums)
             {
-                selectPart.AppendLine($" {parentNTable}.{column.Key} AS {{nameof({tableData.RelatedClass}.{column.Value})}},");
+                selectMethodPart.AppendLine($" {parentAliasTable}.{column.Key} AS {{nameof({tableData.RelatedClass}.{column.Value})}},");
+                simpleSelectPart.AppendLine($" {parentAliasTable}.{column.Key}, ");
             }
 
             var childTables = MappedTables.Where(x => x.ReferencesTables != null && x.ReferencesTables.Any(y => y.RelatedTable == tableData.TableName));
 
             if(childTables.Any())
             {
-                ConstructChildTableScript(childTables, tableData.TableName, parentNTable, ref indexTable, ref fromPart, ref joinPart, ref selectPart);
+                ConstructChildTableScript(childTables, tableData.TableName, parentAliasTable, joinPart, selectMethodPart, simpleSelectPart, ref indexTable);
             }
 
-            selectPart.Remove(selectPart.Length - 2, 1);
-            sqlScript.Append(selectPart).Append(fromPart).Append(joinPart);
+            selectMethodPart.Remove(selectMethodPart.Length - 2, 1);
 
-            _sqlSelectRequest = sqlScript.ToString();
+            _sqlSelectRequestMethod = new StringBuilder("SELECT ").Append(selectMethodPart).Append($" FROM {tableData.TableName} {parentAliasTable} ")
+                                     .AppendLine(joinPart.ToString()).ToString();
+            _sqlSelectRequestSimple = new StringBuilder("SELECT ").Append(simpleSelectPart).Append($" FROM {tableData.TableName} {parentAliasTable} ")
+                                     .AppendLine(joinPart.ToString()).ToString();
+
+            simpleSelectPart.Remove(simpleSelectPart.Length - 2, 1);
+
         }
 
         /// <summary>
@@ -242,11 +255,10 @@ namespace DapperSqlConstructor.Models
         /// <param name="parentTName">Parent table name</param>
         /// <param name="parentAliasTable">Parent table alias</param>
         /// <param name="indexTable">Number of table in sequences</param>
-        /// <param name="fromPart">From part of request</param>
         /// <param name="joinPart">Join part of request</param>
-        /// <param name="selectStr">Select part of request</param>
-        private void ConstructChildTableScript(IEnumerable<MappedTableModel> childTables, string parentTName, string parentAliasTable,  ref int indexTable, 
-                                               ref StringBuilder fromPart, ref StringBuilder joinPart, ref StringBuilder selectStr)
+        /// <param name="selectMethodPart">Select part of request</param>
+        private void ConstructChildTableScript(IEnumerable<MappedTableModel> childTables, string parentTName, string parentAliasTable, StringBuilder joinPart, 
+                                               StringBuilder selectMethodPart, StringBuilder simpleSelectPart, ref int indexTable)
         {
             foreach (var childTable in childTables)
             {
@@ -273,7 +285,8 @@ namespace DapperSqlConstructor.Models
                 {
                     if (!String.IsNullOrEmpty(childColumn.Key) && !String.IsNullOrEmpty(childColumn.Value))
                     {
-                        selectStr.AppendLine($"{childNTable}.{childColumn.Key} AS {{nameof({childTable.RelatedClass}.{childColumn.Value})}},");
+                        selectMethodPart.AppendLine($"{childNTable}.{childColumn.Key} AS {{nameof({childTable.RelatedClass}.{childColumn.Value})}},");
+                        simpleSelectPart.AppendLine($"{childNTable}.{childColumn.Key}");
                     }
                 }
 
@@ -281,7 +294,7 @@ namespace DapperSqlConstructor.Models
 
                 if(nextChildTables.Any())
                 {
-                    ConstructChildTableScript(nextChildTables, childTable.TableName, childNTable, ref indexTable, ref fromPart, ref joinPart, ref selectStr);
+                    ConstructChildTableScript(nextChildTables, childTable.TableName, childNTable, joinPart, selectMethodPart, simpleSelectPart, ref indexTable);
                 }
             }    
         }
@@ -321,10 +334,11 @@ namespace DapperSqlConstructor.Models
 
             generalTypeStr.Append($"{firstTableData.RelatedClass}");
 
-            _sqlSelectMethod = $@"public async Get{mainTable.RelatedClass}List()
+            _sqlSelectMethod = $@"
+public async Get{mainTable.RelatedClass}List()
 {{
       using var connection = new SqlConnection(_connectionString);
-      var command = @$""{_sqlSelectRequest}"";
+      var command = @$""{_sqlSelectRequestMethod}"";
       
       return await  connection.QueryAsync<{generalTypeStr.ToString()}>(
       command,

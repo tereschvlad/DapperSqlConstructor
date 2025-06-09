@@ -245,6 +245,9 @@ public class GrandchildTable
         public string UpdateMethods { get; set; }
 
         [BindProperty]
+        public string SelectRequest { get; set; }
+
+        [BindProperty]
         [Required]
         public IFormFile SqlScriptFile { get; set; }
 
@@ -285,6 +288,7 @@ public class GrandchildTable
             builder.ParseTableProperties();
 
             SelectMethod = builder.SqlSelectMethod;
+            SelectRequest = builder.SqlSelectRequestSimple;
 
             var insertMethods = new StringBuilder();
             var updateMethods = new StringBuilder();

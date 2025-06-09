@@ -29,3 +29,17 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+
+pre {
+    white-space: pre-wrap; /* Wrap long lines */
+    word-wrap: break-word; /* Break long words */
+    margin: 0; /* Remove default margin */
+    background: #f8f9fa; /* Light background for better visibility */
+    padding: 1rem; /* Padding for the pre element */
+    border: 1px solid #ddd; /* Border around the pre element */
+    border-radius: 0.25rem; /* Rounded corners */
+}
+
+code {
+    font-family: monospace; /* Monospace font for code */
+}
