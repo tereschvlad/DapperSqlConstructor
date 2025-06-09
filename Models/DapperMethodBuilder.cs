@@ -3,13 +3,29 @@ using System.Text.RegularExpressions;
 
 namespace DapperSqlConstructor.Models
 {
+    /// <summary>
+    /// Class has a functionality for constructing select, insert and update request dapper method for tables and models wich mepped for them.
+    /// </summary>
     public class DapperMethodBuilder
     {
-        public char PrefixValueChar { get; set; }
+        /// <summary>
+        /// Chart wich marks input value
+        /// </summary>
+        private char PrefixValueChar { get; set; }
+
+        /// <summary>
+        /// String with scripts for table
+        /// </summary>
         public string TableScriptString { get; set; }
 
+        /// <summary>
+        /// String with model wich mapped for table
+        /// </summary>
         public string MappedClassesString { get; set; }
 
+        /// <summary>
+        /// Info about tables and related classes
+        /// </summary>
         public List<MappedTableModel> MappedTables { get; set; }
 
         /// <summary>
@@ -21,19 +37,25 @@ namespace DapperSqlConstructor.Models
 
         private string _sqlSelectRequest;
 
+        /// <summary>
+        /// Includes select sql request with mapping part
+        /// </summary>
         public string SqlSelectRequest => _sqlSelectRequest;
 
 
         private string _sqlSelectMethod;
 
+        /// <summary>
+        /// Includes describe select method, through all tables 
+        /// </summary>
         public string SqlSelectMethod => _sqlSelectMethod;
 
-        public DapperMethodBuilder(string createdTableScript, string mappedClasses)
+        public DapperMethodBuilder(string createdTableScript, string mappedClasses, char prefixValue = ':')
         {
             TableScriptString = createdTableScript;
             MappedClassesString = mappedClasses;
             MappedTables = new List<MappedTableModel>();
-            PrefixValueChar = ':';
+            PrefixValueChar = prefixValue;
         }
 
         /// <summary>
@@ -91,13 +113,13 @@ namespace DapperSqlConstructor.Models
 
                         if(foreighKeyMatches.Any())
                         {
-                            genTable.ReferencesTables = new List<LinkedTableModel>();
+                            genTable.ReferencesTables = new List<RelatedTableModel>();
 
                             foreach (var foreighKeyMatch in foreighKeyMatches.ToList())
                             {
                                 if (foreighKeyMatch.Groups.Count >= 3)
                                 {
-                                    var linkedTableInfo = new LinkedTableModel();
+                                    var linkedTableInfo = new RelatedTableModel();
 
                                     var fkStr = foreighKeyMatch.Groups[1]?.Value;
                                     var refTableStr = foreighKeyMatch.Groups[2]?.Value;
@@ -108,7 +130,7 @@ namespace DapperSqlConstructor.Models
 
                                     if (listFk.Count == listRef.Count)
                                     {
-                                        linkedTableInfo.ReferenceTable = refTableStr.Trim();
+                                        linkedTableInfo.RelatedTable = refTableStr.Trim();
                                         linkedTableInfo.ForeighnKeyColumns = new Dictionary<string, string>();
 
                                         for (int i = 0; i < listFk.Count(); i++)
@@ -176,6 +198,9 @@ namespace DapperSqlConstructor.Models
             }
         }
 
+        /// <summary>
+        /// This method construct select request through all tables
+        /// </summary>
         public void ConstructSqlSelectRequest()
         {
             var indexTable = 1;
@@ -197,7 +222,7 @@ namespace DapperSqlConstructor.Models
                 selectPart.AppendLine($" {parentNTable}.{column.Key} AS {{nameof({tableData.RelatedClass}.{column.Value})}},");
             }
 
-            var childTables = MappedTables.Where(x => x.ReferencesTables != null && x.ReferencesTables.Any(y => y.ReferenceTable == tableData.TableName));
+            var childTables = MappedTables.Where(x => x.ReferencesTables != null && x.ReferencesTables.Any(y => y.RelatedTable == tableData.TableName));
 
             if(childTables.Any())
             {
@@ -210,7 +235,17 @@ namespace DapperSqlConstructor.Models
             _sqlSelectRequest = sqlScript.ToString();
         }
 
-        private void ConstructChildTableScript(IEnumerable<MappedTableModel> childTables, string parentTName, string parentNTable,  ref int indexTable, 
+        /// <summary>
+        /// Add elements for select request, add elements from related table, joining them
+        /// </summary>
+        /// <param name="childTables">Related table data</param>
+        /// <param name="parentTName">Parent table name</param>
+        /// <param name="parentAliasTable">Parent table alias</param>
+        /// <param name="indexTable">Number of table in sequences</param>
+        /// <param name="fromPart">From part of request</param>
+        /// <param name="joinPart">Join part of request</param>
+        /// <param name="selectStr">Select part of request</param>
+        private void ConstructChildTableScript(IEnumerable<MappedTableModel> childTables, string parentTName, string parentAliasTable,  ref int indexTable, 
                                                ref StringBuilder fromPart, ref StringBuilder joinPart, ref StringBuilder selectStr)
         {
             foreach (var childTable in childTables)
@@ -218,7 +253,7 @@ namespace DapperSqlConstructor.Models
                 indexTable++;
                 var childNTable = $"t{indexTable}";
 
-                var referenceTable = childTable.ReferencesTables.FirstOrDefault(x => x.ReferenceTable == parentTName);
+                var referenceTable = childTable.ReferencesTables.FirstOrDefault(x => x.RelatedTable == parentTName);
                 var joinStr = new StringBuilder($" LEFT JOIN {childTable.TableName} ON ");
                 var joinCondition = new StringBuilder();
 
@@ -227,9 +262,9 @@ namespace DapperSqlConstructor.Models
                 foreach (var fk in referenceTable.ForeighnKeyColumns)
                 {
                     if (joinCondition.Length > 0)
-                        joinCondition.Append($" AND {childNTable}.{fk.Key} = {parentNTable}.{fk.Value}");
+                        joinCondition.Append($" AND {childNTable}.{fk.Key} = {parentAliasTable}.{fk.Value}");
                     else
-                        joinCondition.Append($"{childNTable}.{fk.Key} = {parentNTable}.{fk.Value}");
+                        joinCondition.Append($"{childNTable}.{fk.Key} = {parentAliasTable}.{fk.Value}");
                 }
 
                 joinPart.AppendLine(joinStr.ToString()).Append(joinCondition);
@@ -242,7 +277,7 @@ namespace DapperSqlConstructor.Models
                     }
                 }
 
-                var nextChildTables = MappedTables.Where(x => x.ReferencesTables != null && x.ReferencesTables.Any(y => y.ReferenceTable == childTable.TableName));
+                var nextChildTables = MappedTables.Where(x => x.ReferencesTables != null && x.ReferencesTables.Any(y => y.RelatedTable == childTable.TableName));
 
                 if(nextChildTables.Any())
                 {
@@ -251,6 +286,9 @@ namespace DapperSqlConstructor.Models
             }    
         }
 
+        /// <summary>
+        /// Construct select dapper method
+        /// </summary>
         private void ConstructDapperSelectMethod()
         {
             var mainTable = MappedTables.FirstOrDefault(x => x.ReferencesTables == null);
@@ -299,6 +337,9 @@ namespace DapperSqlConstructor.Models
 
         }
 
+        /// <summary>
+        /// Construct insert dapper method, for every table
+        /// </summary>
         private void ConstructDapperInsertMethod()
         {
             foreach(var dataInfo in MappedTables)
@@ -336,6 +377,9 @@ public async Task Insert{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} ite
             }
         }
 
+        /// <summary>
+        /// Construct update dapper method, for every table
+        /// </summary>
         private void ConstructDapperUpdateMethod()
         {
             foreach (var dataInfo in MappedTables)
@@ -384,25 +428,56 @@ public async Task Update{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} ite
         }
     }
 
+    /// <summary>
+    /// Class wich describes information about table and mapped model. This class consist disassembled information for scripts for table and class.
+    /// Object has information about mapping properties and columns, mapping information about table and refer class. info about references table etc.
+    /// </summary>
     public class MappedTableModel
     {
+        /// <summary>
+        /// Table name
+        /// </summary>
         public string TableName { get; set; }
 
+        /// <summary>
+        /// Related class for table
+        /// </summary>
         public string RelatedClass { get; set; }
 
+        /// <summary>
+        /// Dictionary there exist column and related property
+        /// </summary>
         public Dictionary<string, string> Colums { get; set; }
 
-        public List<LinkedTableModel> ReferencesTables { get; set; }
+        /// <summary>
+        /// Related table information
+        /// </summary>
+        public List<RelatedTableModel> ReferencesTables { get; set; }
 
+        /// <summary>
+        /// Includes describe insert method 
+        /// </summary>
         public string InsertStringMethod { get; set; }
 
+        /// <summary>
+        /// Includes describe update method 
+        /// </summary>
         public string UpdateStringMethod { get; set; }
     }
 
-    public class LinkedTableModel
+    /// <summary>
+    /// Object describes information about references table, columns wich is foreighn keyses.
+    /// </summary>
+    public class RelatedTableModel
     {
-        public string ReferenceTable { get; set; }
+        /// <summary>
+        /// Name of related class
+        /// </summary>
+        public string RelatedTable { get; set; }
 
+        /// <summary>
+        /// Describe for foreighn key
+        /// </summary>
         public Dictionary<string, string> ForeighnKeyColumns { get; set; }
     }
 }

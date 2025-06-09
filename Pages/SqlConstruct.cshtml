@@ -21,9 +21,14 @@
             </div>
         </form>
         <div class="container my-5">
-            <h2>Rules how it works.</h2>
+            <h2>How it works!</h2>
             <p>
-                You should load file with classes of models and load file with scripts for creating tables for this classes.
+                You should load file where will be C# class (model) which describe table. In comment for table should has name of table and in 
+                property comments should has a name of related column. Property for data from related table should has comment with only name of related table.
+                The script for table should has only scripts for creating table. There should be only columns and foreign key without other constraint and other key words.
+                You can see examples in right part of sith web page. "Example for sql scripts" - with examples for creating tables and "Example for related models" - with 
+                examples for realted models.After click on the button you get the result of processing. In "Result select method" - should show the result of creating select dapper method.
+                In "Result of insert methods" - show the result of creating insert methods. In "Result of update methods" - show the result of creating update methods.
             </p>
         </div>
 	</div>
