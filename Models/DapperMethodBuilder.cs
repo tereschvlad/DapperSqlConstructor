@@ -82,7 +82,7 @@ namespace DapperSqlConstructor.Models
                 var foreignKeyPart = new Regex("FOREIGN\\sKEY\\s*\\(\\s*(.*?)\\s*\\).*?REFERENCES\\s*?(.*?)\\s*?\\(\\s*?(.*?)\\s*?\\)",
                                                RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-                string[] keyWords = new string[] { "CONSTRAINT", "FOREIGN", "REFERENCES", "ON" };
+                string[] keyWords = new string[] { "CONSTRAINT", "FOREIGN", "REFERENCES", "ON", "PRIMARY" };
 
                 //Loop tables matches
                 foreach (var match in matches.ToList())
@@ -226,7 +226,9 @@ namespace DapperSqlConstructor.Models
 
             foreach (var column in tableData.Colums)
             {
-                selectMethodPart.AppendLine($" {parentAliasTable}.{column.Key} AS {{nameof({tableData.RelatedClass}.{column.Value})}},");
+                if(!String.IsNullOrEmpty(column.Key) && !String.IsNullOrEmpty(column.Value))
+                    selectMethodPart.AppendLine($" {parentAliasTable}.{column.Key} AS {{nameof({tableData.RelatedClass}.{column.Value})}},");
+
                 simpleSelectPart.AppendLine($" {parentAliasTable}.{column.Key}, ");
             }
 
@@ -237,11 +239,15 @@ namespace DapperSqlConstructor.Models
                 ConstructChildTableScript(childTables, tableData.TableName, parentAliasTable, joinPart, selectMethodPart, simpleSelectPart, ref indexTable);
             }
 
-            selectMethodPart.Remove(selectMethodPart.Length - 2, 1);
+            var selectMethodStr = selectMethodPart.ToString();
+            var simpleSelectStr = simpleSelectPart.ToString();
 
-            _sqlSelectRequestMethod = new StringBuilder("SELECT ").Append(selectMethodPart).Append($" FROM {tableData.TableName} {parentAliasTable} ")
+            var lastComaSelMethod = selectMethodStr.LastIndexOf(',');
+            var lastComaSimpleSelect = simpleSelectStr.LastIndexOf(',');
+
+            _sqlSelectRequestMethod = new StringBuilder("SELECT ").AppendLine(selectMethodStr.Remove(lastComaSelMethod, 1)).Append($" FROM {tableData.TableName} {parentAliasTable} ")
                                      .AppendLine(joinPart.ToString()).ToString();
-            _sqlSelectRequestSimple = new StringBuilder("SELECT ").Append(simpleSelectPart).Append($" FROM {tableData.TableName} {parentAliasTable} ")
+            _sqlSelectRequestSimple = new StringBuilder("SELECT ").AppendLine(simpleSelectStr.Remove(lastComaSimpleSelect, 1)).Append($" FROM {tableData.TableName} {parentAliasTable} ")
                                      .AppendLine(joinPart.ToString()).ToString();
 
             simpleSelectPart.Remove(simpleSelectPart.Length - 2, 1);
@@ -266,7 +272,7 @@ namespace DapperSqlConstructor.Models
                 var childNTable = $"t{indexTable}";
 
                 var referenceTable = childTable.ReferencesTables.FirstOrDefault(x => x.RelatedTable == parentTName);
-                var joinStr = new StringBuilder($" LEFT JOIN {childTable.TableName} ON ");
+                var joinStr = new StringBuilder($" LEFT JOIN {childTable.TableName} {childNTable} ON ");
                 var joinCondition = new StringBuilder();
 
                 _queueSelectTables.Enqueue(childTable.TableName);
@@ -286,7 +292,7 @@ namespace DapperSqlConstructor.Models
                     if (!String.IsNullOrEmpty(childColumn.Key) && !String.IsNullOrEmpty(childColumn.Value))
                     {
                         selectMethodPart.AppendLine($"{childNTable}.{childColumn.Key} AS {{nameof({childTable.RelatedClass}.{childColumn.Value})}},");
-                        simpleSelectPart.AppendLine($"{childNTable}.{childColumn.Key}");
+                        simpleSelectPart.AppendLine($"{childNTable}.{childColumn.Key},");
                     }
                 }
 
@@ -327,6 +333,8 @@ namespace DapperSqlConstructor.Models
                     argumentsFuncPart.Append(',');
                     splitStr.Append(',');
                 }
+
+                tableIdx++;
             }
 
             var firstQueue = _queueSelectTables.First();
@@ -335,18 +343,18 @@ namespace DapperSqlConstructor.Models
             generalTypeStr.Append($"{firstTableData.RelatedClass}");
 
             _sqlSelectMethod = $@"
-public async Get{mainTable.RelatedClass}List()
+public async Task<IEnumerable<{mainTable.RelatedClass}>> Get{mainTable.RelatedClass}List()
 {{
       using var connection = new SqlConnection(_connectionString);
       var command = @$""{_sqlSelectRequestMethod}"";
       
       return await  connection.QueryAsync<{generalTypeStr.ToString()}>(
       command,
-      ({argumentsFuncPart.ToString()})
+      ({argumentsFuncPart.ToString()}) =>
       {{
-          return arg1;
+          return obj1;
       }},
-      splitOn: ""{splitStr.ToString()}""
+      splitOn: ""{splitStr.ToString()}"");
 }}";
 
         }
@@ -363,10 +371,13 @@ public async Get{mainTable.RelatedClass}List()
 
                 var lastItem = dataInfo.Colums.Last();
 
-                foreach (var colomn in dataInfo.Colums)
+                foreach (var colomn in dataInfo.Colums.Where(x => !String.IsNullOrEmpty(x.Key) && !String.IsNullOrEmpty(x.Value)))
                 {
-                    sqlInsCol.Append(colomn.Key);
-                    sqlInsVal.Append($"{PrefixValueChar}{{nameof({dataInfo.RelatedClass}.{colomn.Value})}}");
+                    if(!String.IsNullOrEmpty(colomn.Key) && !String.IsNullOrEmpty(colomn.Value))
+                    {
+                        sqlInsCol.Append(colomn.Key);
+                        sqlInsVal.Append($"{PrefixValueChar}{{nameof({dataInfo.RelatedClass}.{colomn.Value})}}");
+                    }
 
                     if(colomn.Key != lastItem.Key)
                     {
@@ -403,14 +414,16 @@ public async Task Insert{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} ite
                 var firstItem = dataInfo.Colums.First();
                 var lastItem = dataInfo.Colums.Last();
 
-                foreach (var colomn in dataInfo.Colums)
+                foreach (var colomn in dataInfo.Colums.Where(x => !String.IsNullOrEmpty(x.Key) && !String.IsNullOrEmpty(x.Value)))
                 {
                     if (firstItem.Key == colomn.Key)
-                        continue;
-                    else
+                    {
                         sqlStr.AppendLine("SET ");
+                        continue;
+                    }
 
-                    sqlStr.Append($"{colomn.Key} = {PrefixValueChar}{{nameof({dataInfo.RelatedClass}.{colomn.Value})}}");
+                    if(!String.IsNullOrEmpty(colomn.Key) && !String.IsNullOrEmpty(colomn.Value))
+                        sqlStr.Append($"{colomn.Key} = {PrefixValueChar}{{nameof({dataInfo.RelatedClass}.{colomn.Value})}}");
 
                     if (lastItem.Key != colomn.Key)
                         sqlStr.AppendLine(", ");
