@@ -289,6 +289,8 @@ public class GrandchildTable
 
             SelectMethod = builder.SqlSelectMethod;
             SelectRequest = builder.SqlSelectRequestSimple;
+            ExampleTableSqlScripts = builder.TableScriptString;
+            ExampleClassModels = builder.MappedClassesString;
 
             var insertMethods = new StringBuilder();
             var updateMethods = new StringBuilder();

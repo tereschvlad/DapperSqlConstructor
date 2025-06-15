@@ -82,7 +82,7 @@ namespace DapperSqlConstructor.Models
                 var foreignKeyPart = new Regex("FOREIGN\\sKEY\\s*\\(\\s*(.*?)\\s*\\).*?REFERENCES\\s*?(.*?)\\s*?\\(\\s*?(.*?)\\s*?\\)",
                                                RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-                string[] keyWords = new string[] { "CONSTRAINT", "FOREIGN", "REFERENCES", "ON", "PRIMARY" };
+                string[] keyWords = new string[] { "CONSTRAINT", "FOREIGN", "REFERENCES", "ON", "PRIMARY", "DELETE", "CASCADE" };
 
                 //Loop tables matches
                 foreach (var match in matches.ToList())
@@ -392,7 +392,7 @@ public async Task<IEnumerable<{mainTable.RelatedClass}>> Get{mainTable.RelatedCl
                 dataInfo.InsertStringMethod = $@"
 public async Task Insert{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} item)
 {{
-   var sql = @$""{sqlInsCol.ToString()}{sqlInsVal.ToString()}"";
+   var sql = @$""{sqlInsCol.ToString()} {sqlInsVal.ToString()}"";
 
    using var connection = new SqlConnection(_connectionString);
    await connection.OpenAsync();
