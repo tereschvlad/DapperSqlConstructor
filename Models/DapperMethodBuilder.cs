@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Data.Common;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace DapperSqlConstructor.Models
@@ -9,7 +10,7 @@ namespace DapperSqlConstructor.Models
     public class DapperMethodBuilder
     {
         /// <summary>
-        /// Chart wich marks input value
+        /// Character used to mark input values
         /// </summary>
         private char PrefixValueChar { get; set; }
 
@@ -29,7 +30,7 @@ namespace DapperSqlConstructor.Models
         public List<MappedTableModel> MappedTables { get; set; }
 
         /// <summary>
-        /// Queue where writed sequence tables in sql script
+        /// Queue with the sequence of table names used in the SQL script
         /// </summary>
 
         private Queue<string> _queueSelectTables;
@@ -82,78 +83,78 @@ namespace DapperSqlConstructor.Models
                 var foreignKeyPart = new Regex("FOREIGN\\sKEY\\s*\\(\\s*(.*?)\\s*\\).*?REFERENCES\\s*?(.*?)\\s*?\\(\\s*?(.*?)\\s*?\\)",
                                                RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-                string[] keyWords = new string[] { "CONSTRAINT", "FOREIGN", "REFERENCES", "ON", "PRIMARY", "DELETE", "CASCADE" };
+                string[] keyWords = new string[] { "CONSTRAINT", "FOREIGN", "REFERENCES", "ON", "PRIMARY", "DELETE", "CASCADE", "UNIQUE" };
 
                 //Loop tables matches
-                foreach (var match in matches.ToList())
+                foreach (Match match in matches)
                 {
-                    if (match != null && !String.IsNullOrEmpty(match.Value))
+                    if(match == null || String.IsNullOrEmpty(match.Value))
+                        continue;
+
+                    var genTable = new MappedTableModel()
                     {
-                        var genTable = new MappedTableModel()
+                        Columns = new Dictionary<string, string>()
+                    };
+
+                    //Get text for only table
+                    var tableMatch = tablePart.Match(match.Value);
+                    genTable.TableName = tableKeyWordPart.Replace(tableMatch.Value, "", 1).Trim();
+
+                    var startPoint = match.Value.IndexOf("(");
+                    var endPoint = match.Value.IndexOf(");");
+
+                    //Get columns for tables
+                    var listColumn = match.Value.Substring(startPoint + 1, endPoint - startPoint - 1).Replace("\r", " ").Replace("\t", " ")
+                                           .Split("\n").Where(x => !String.IsNullOrWhiteSpace(x));
+
+                    foreach (var colData in listColumn)
+                    {
+                        var colName = colData.Trim().Split(' ')[0];
+
+                        if (!String.IsNullOrEmpty(colName) && !keyWords.Any(x => x == colName.ToUpper()))
                         {
-                            Colums = new Dictionary<string, string>()
-                        };
-
-                        //Get text for only table
-                        var tableMatch = tablePart.Match(match.Value);
-                        genTable.TableName = tableKeyWordPart.Replace(tableMatch.Value, "", 1).Trim();
-
-                        var startPoint = match.Value.IndexOf("(");
-                        var endPoint = match.Value.IndexOf(");");
-
-                        //Get colums for tables
-                        var listColumn = match.Value.Substring(startPoint + 1, endPoint - startPoint - 1).Replace("\r", " ").Replace("\t", " ")
-                                               .Split("\n").Where(x => !String.IsNullOrWhiteSpace(x));
-
-                        foreach (var colData in listColumn)
-                        {
-                            var colName = colData.Trim().Split(' ')[0];
-
-                            if (!String.IsNullOrEmpty(colName) && !keyWords.Any(x => x == colName.ToUpper()))
-                            {
-                                //Set columns data
-                                genTable.Colums.Add(colName, String.Empty);
-                            }
+                            //Set columns data
+                            genTable.Columns.Add(colName, String.Empty);
                         }
+                    }
 
-                        //Get data about foreign keyses
-                        var foreighKeyMatches = foreignKeyPart.Matches(match.Value);
+                    //Get data about foreign keyses
+                    var foreighKeyMatches = foreignKeyPart.Matches(match.Value);
 
-                        if(foreighKeyMatches.Any())
+                    if (foreighKeyMatches.Any())
+                    {
+                        genTable.ReferencesTables = new List<RelatedTableModel>();
+
+                        foreach (Match foreignKeyMatch in foreighKeyMatches)
                         {
-                            genTable.ReferencesTables = new List<RelatedTableModel>();
+                            if (foreignKeyMatch.Groups.Count < 3)
+                                continue;
 
-                            foreach (var foreighKeyMatch in foreighKeyMatches.ToList())
+                            var linkedTableInfo = new RelatedTableModel();
+
+                            var fkStr = foreignKeyMatch.Groups[1]?.Value;
+                            var refTableStr = foreignKeyMatch.Groups[2]?.Value;
+                            var refColumnsStr = foreignKeyMatch.Groups[3]?.Value;
+
+                            var listFk = fkStr.Split(',').Select(x => x.Trim()).ToList();
+                            var listRef = refColumnsStr.Split(',').Select(x => x.Trim()).ToList();
+
+                            if (listFk.Count == listRef.Count)
                             {
-                                if (foreighKeyMatch.Groups.Count >= 3)
+                                linkedTableInfo.RelatedTable = refTableStr.Trim();
+                                linkedTableInfo.ForeignKeyColumns = new Dictionary<string, string>();
+
+                                for (int i = 0; i < listFk.Count(); i++)
                                 {
-                                    var linkedTableInfo = new RelatedTableModel();
-
-                                    var fkStr = foreighKeyMatch.Groups[1]?.Value;
-                                    var refTableStr = foreighKeyMatch.Groups[2]?.Value;
-                                    var refColumsStr = foreighKeyMatch.Groups[3]?.Value;
-
-                                    var listFk = fkStr.Split(',').Select(x => x.Trim()).ToList();
-                                    var listRef = refColumsStr.Split(',').Select(x => x.Trim()).ToList();
-
-                                    if (listFk.Count == listRef.Count)
-                                    {
-                                        linkedTableInfo.RelatedTable = refTableStr.Trim();
-                                        linkedTableInfo.ForeighnKeyColumns = new Dictionary<string, string>();
-
-                                        for (int i = 0; i < listFk.Count(); i++)
-                                        {
-                                            linkedTableInfo.ForeighnKeyColumns.Add(listFk[i], listRef[i]);
-                                        }
-                                    }
-
-                                    genTable.ReferencesTables.Add(linkedTableInfo);
+                                    linkedTableInfo.ForeignKeyColumns.Add(listFk[i], listRef[i]);
                                 }
                             }
-                        }
 
-                        MappedTables.Add(genTable);
+                            genTable.ReferencesTables.Add(linkedTableInfo);
+                        }
                     }
+
+                    MappedTables.Add(genTable);
                 }
             }
         }
@@ -173,34 +174,34 @@ namespace DapperSqlConstructor.Models
                 var commentPropertyPart = new Regex("\\(\\s*?Column:\\s*?(.*?)\\).*?public\\s*?[\\w\\?<>]+\\s*?(\\w+)\\s*?{\\s*?get;\\s*?set;\\s*?}",
                                                      RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-                foreach (var match in matches.ToList())
+                foreach (Match match in matches)
                 {
                     var tableDataStr = commentClassPart.Match(match.Value);
                     var propertiesDataStr = commentPropertyPart.Matches(match.Value);
 
-                    if (tableDataStr.Groups.Count > 2)
+                    if (tableDataStr.Groups.Count <= 2)
+                        continue;
+
+                    var tableName = tableDataStr.Groups[1].Value?.Trim();
+                    var className = tableDataStr.Groups[2].Value?.Trim();
+
+                    var dTable = MappedTables.FirstOrDefault(x => x.TableName == tableName);
+
+                    if (dTable == null)
+                        continue;
+
+                    dTable.RelatedClass = className;
+
+                    foreach (Match propertyDataStr in propertiesDataStr)
                     {
-                        var tableName = tableDataStr.Groups[1].Value?.Trim();
-                        var className = tableDataStr.Groups[2].Value?.Trim();
+                        if (propertyDataStr.Groups.Count <= 2)
+                            continue;
 
-                        var dTable = MappedTables.FirstOrDefault(x => x.TableName == tableName);
+                        var colRelated = propertyDataStr.Groups[1].Value?.Trim();
+                        var propName = propertyDataStr.Groups[2].Value?.Trim();
 
-                        if (dTable != null)
-                        {
-                            dTable.RelatedClass = className;
-
-                            foreach (var propertyDataStr in propertiesDataStr.ToList())
-                            {
-                                if (propertyDataStr.Groups.Count > 2)
-                                {
-                                    var colRelated = propertyDataStr.Groups[1].Value?.Trim();
-                                    var propName = propertyDataStr.Groups[2].Value?.Trim();
-
-                                    if (dTable.Colums.ContainsKey(colRelated))
-                                        dTable.Colums[colRelated] = propName;
-                                }
-                            }
-                        }
+                        if (dTable.Columns.ContainsKey(colRelated))
+                            dTable.Columns[colRelated] = propName;
                     }
                 }
             }
@@ -210,48 +211,35 @@ namespace DapperSqlConstructor.Models
         /// This method construct select request through all tables
         /// </summary>
         public void ConstructSqlSelectRequest()
-        {
+         {
             var indexTable = 1;
             var parentAliasTable = $"t{indexTable}";
 
             StringBuilder sqlScript = new StringBuilder("SELECT ");
 
-            var tableData = MappedTables.FirstOrDefault(x => x.ReferencesTables == null);
-            var selectMethodPart = new StringBuilder();
-            var simpleSelectPart = new StringBuilder();
+            var mainTable = MappedTables.FirstOrDefault(x => x.ReferencesTables == null);
+            //var selectMethodPart = new StringBuilder();
+            //var simpleSelectPart = new StringBuilder();
             var joinPart = new StringBuilder();
 
             _queueSelectTables = new Queue<string>();
-            _queueSelectTables.Enqueue(tableData.TableName);
+            _queueSelectTables.Enqueue(mainTable.TableName);
 
-            foreach (var column in tableData.Colums)
-            {
-                if(!String.IsNullOrEmpty(column.Key) && !String.IsNullOrEmpty(column.Value))
-                    selectMethodPart.AppendLine($" {parentAliasTable}.{column.Key} AS {{nameof({tableData.RelatedClass}.{column.Value})}},");
+            var selectMethodParts = mainTable.Columns.Where(x => !String.IsNullOrEmpty(x.Key) && !String.IsNullOrEmpty(x.Value))
+                                                    .Select(x => $" {parentAliasTable}.{x.Key} AS {{nameof({mainTable.RelatedClass}.{x.Value})}}").ToList();
+            var simpleSelectSelectParts = mainTable.Columns.Select(x => $" {parentAliasTable}.{x.Key} ").ToList();
 
-                simpleSelectPart.AppendLine($" {parentAliasTable}.{column.Key}, ");
-            }
-
-            var childTables = MappedTables.Where(x => x.ReferencesTables != null && x.ReferencesTables.Any(y => y.RelatedTable == tableData.TableName));
+            var childTables = MappedTables.Where(x => x.ReferencesTables != null && x.ReferencesTables.Any(y => y.RelatedTable == mainTable.TableName));
 
             if(childTables.Any())
             {
-                ConstructChildTableScript(childTables, tableData.TableName, parentAliasTable, joinPart, selectMethodPart, simpleSelectPart, ref indexTable);
+                ConstructChildTableScript(childTables, mainTable.TableName, parentAliasTable, joinPart, selectMethodParts, simpleSelectSelectParts, ref indexTable);
             }
 
-            var selectMethodStr = selectMethodPart.ToString();
-            var simpleSelectStr = simpleSelectPart.ToString();
-
-            var lastComaSelMethod = selectMethodStr.LastIndexOf(',');
-            var lastComaSimpleSelect = simpleSelectStr.LastIndexOf(',');
-
-            _sqlSelectRequestMethod = new StringBuilder("SELECT ").AppendLine(selectMethodStr.Remove(lastComaSelMethod, 1)).Append($" FROM {tableData.TableName} {parentAliasTable} ")
+            _sqlSelectRequestMethod = new StringBuilder("SELECT ").AppendLine(string.Join(",\n", selectMethodParts)).Append($" FROM {mainTable.TableName} {parentAliasTable} ")
                                      .AppendLine(joinPart.ToString()).ToString();
-            _sqlSelectRequestSimple = new StringBuilder("SELECT ").AppendLine(simpleSelectStr.Remove(lastComaSimpleSelect, 1)).Append($" FROM {tableData.TableName} {parentAliasTable} ")
+            _sqlSelectRequestSimple = new StringBuilder("SELECT ").AppendLine(string.Join(",\n", simpleSelectSelectParts)).Append($" FROM {mainTable.TableName} {parentAliasTable} ")
                                      .AppendLine(joinPart.ToString()).ToString();
-
-            simpleSelectPart.Remove(simpleSelectPart.Length - 2, 1);
-
         }
 
         /// <summary>
@@ -264,43 +252,38 @@ namespace DapperSqlConstructor.Models
         /// <param name="joinPart">Join part of request</param>
         /// <param name="selectMethodPart">Select part of request</param>
         private void ConstructChildTableScript(IEnumerable<MappedTableModel> childTables, string parentTName, string parentAliasTable, StringBuilder joinPart, 
-                                               StringBuilder selectMethodPart, StringBuilder simpleSelectPart, ref int indexTable)
+                                               List<string> selectMethodParts, List<string> simpleSelectSelectParts, ref int indexTable)
         {
             foreach (var childTable in childTables)
             {
                 indexTable++;
-                var childNTable = $"t{indexTable}";
+                var childTableAlias = $"t{indexTable}";
 
                 var referenceTable = childTable.ReferencesTables.FirstOrDefault(x => x.RelatedTable == parentTName);
-                var joinStr = new StringBuilder($" LEFT JOIN {childTable.TableName} {childNTable} ON ");
+                var joinStr = new StringBuilder($" LEFT JOIN {childTable.TableName} {childTableAlias} ON ");
                 var joinCondition = new StringBuilder();
 
                 _queueSelectTables.Enqueue(childTable.TableName);
 
-                foreach (var fk in referenceTable.ForeighnKeyColumns)
+                foreach (var fk in referenceTable.ForeignKeyColumns)
                 {
                     if (joinCondition.Length > 0)
-                        joinCondition.Append($" AND {childNTable}.{fk.Key} = {parentAliasTable}.{fk.Value}");
+                        joinCondition.Append($" AND {childTableAlias}.{fk.Key} = {parentAliasTable}.{fk.Value}");
                     else
-                        joinCondition.Append($"{childNTable}.{fk.Key} = {parentAliasTable}.{fk.Value}");
+                        joinCondition.Append($"{childTableAlias}.{fk.Key} = {parentAliasTable}.{fk.Value}");
                 }
 
                 joinPart.AppendLine(joinStr.ToString()).Append(joinCondition);
 
-                foreach (var childColumn in childTable.Colums)
-                {
-                    if (!String.IsNullOrEmpty(childColumn.Key) && !String.IsNullOrEmpty(childColumn.Value))
-                    {
-                        selectMethodPart.AppendLine($"{childNTable}.{childColumn.Key} AS {{nameof({childTable.RelatedClass}.{childColumn.Value})}},");
-                        simpleSelectPart.AppendLine($"{childNTable}.{childColumn.Key},");
-                    }
-                }
+                selectMethodParts.AddRange(childTable.Columns.Where(x => !String.IsNullOrEmpty(x.Key) && !String.IsNullOrEmpty(x.Value))
+                                                    .Select(x => $" {parentAliasTable}.{x.Key} AS {{nameof({childTable.RelatedClass}.{x.Value})}}"));
+                simpleSelectSelectParts.AddRange(childTable.Columns.Select(x => $" {parentAliasTable}.{x.Key} "));
 
                 var nextChildTables = MappedTables.Where(x => x.ReferencesTables != null && x.ReferencesTables.Any(y => y.RelatedTable == childTable.TableName));
 
                 if(nextChildTables.Any())
                 {
-                    ConstructChildTableScript(nextChildTables, childTable.TableName, childNTable, joinPart, selectMethodPart, simpleSelectPart, ref indexTable);
+                    ConstructChildTableScript(nextChildTables, childTable.TableName, childTableAlias, joinPart, selectMethodParts, simpleSelectSelectParts, ref indexTable);
                 }
             }    
         }
@@ -325,7 +308,7 @@ namespace DapperSqlConstructor.Models
 
                 argumentsFuncPart.Append($"obj{tableIdx}");
 
-                var firstColumn = tableData.Colums.First();
+                var firstColumn = tableData.Columns.First();
                 splitStr.Append($"{firstColumn.Value}");
 
                 if (table != _queueSelectTables.Last())
@@ -369,9 +352,9 @@ public async Task<IEnumerable<{mainTable.RelatedClass}>> Get{mainTable.RelatedCl
                 var sqlInsCol = new StringBuilder($"INSERT INTO {dataInfo.TableName} ( ");
                 var sqlInsVal = new StringBuilder("VALUES (");
 
-                var lastItem = dataInfo.Colums.Last();
+                var lastItem = dataInfo.Columns.Last();
 
-                foreach (var colomn in dataInfo.Colums.Where(x => !String.IsNullOrEmpty(x.Key) && !String.IsNullOrEmpty(x.Value)))
+                foreach (var colomn in dataInfo.Columns.Where(x => !String.IsNullOrEmpty(x.Key) && !String.IsNullOrEmpty(x.Value)))
                 {
                     if(!String.IsNullOrEmpty(colomn.Key) && !String.IsNullOrEmpty(colomn.Value))
                     {
@@ -411,10 +394,10 @@ public async Task Insert{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} ite
             {
                 var sqlStr = new StringBuilder($"UPDATE {dataInfo.TableName} ");
 
-                var firstItem = dataInfo.Colums.First();
-                var lastItem = dataInfo.Colums.Last();
+                var firstItem = dataInfo.Columns.First();
+                var lastItem = dataInfo.Columns.Last();
 
-                foreach (var colomn in dataInfo.Colums.Where(x => !String.IsNullOrEmpty(x.Key) && !String.IsNullOrEmpty(x.Value)))
+                foreach (var colomn in dataInfo.Columns.Where(x => !String.IsNullOrEmpty(x.Key) && !String.IsNullOrEmpty(x.Value)))
                 {
                     if (firstItem.Key == colomn.Key)
                     {
@@ -474,7 +457,7 @@ public async Task Update{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} ite
         /// <summary>
         /// Dictionary there exist column and related property
         /// </summary>
-        public Dictionary<string, string> Colums { get; set; }
+        public Dictionary<string, string> Columns { get; set; }
 
         /// <summary>
         /// Related table information
@@ -505,6 +488,6 @@ public async Task Update{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} ite
         /// <summary>
         /// Describe for foreighn key
         /// </summary>
-        public Dictionary<string, string> ForeighnKeyColumns { get; set; }
+        public Dictionary<string, string> ForeignKeyColumns { get; set; }
     }
 }
