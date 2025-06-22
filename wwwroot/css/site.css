@@ -31,15 +31,15 @@ body {
 }
 
 pre {
-    white-space: pre-wrap; /* Wrap long lines */
-    word-wrap: break-word; /* Break long words */
-    margin: 0; /* Remove default margin */
-    background: #f8f9fa; /* Light background for better visibility */
-    padding: 1rem; /* Padding for the pre element */
-    border: 1px solid #ddd; /* Border around the pre element */
-    border-radius: 0.25rem; /* Rounded corners */
+    white-space: pre-wrap; 
+    word-wrap: break-word; 
+    margin: 0; 
+    background: #f8f9fa; 
+    padding: 1rem; 
+    border: 1px solid #ddd; 
+    border-radius: 0.25rem; 
 }
 
 code {
-    font-family: monospace; /* Monospace font for code */
+    font-family: monospace; 
 }

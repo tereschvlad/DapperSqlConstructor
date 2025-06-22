@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Hosting;
 using DapperSqlConstructor.Models;
 
 namespace DapperSqlConstructor.Pages
@@ -285,7 +284,6 @@ public class GrandchildTable
             }
 
             var builder = new DapperMethodBuilder(SqlScripts, ConnectedClasses);
-            builder.ParseTableProperties();
 
             SelectMethod = builder.SqlSelectMethod;
             SelectRequest = builder.SqlSelectRequestSimple;
@@ -294,8 +292,8 @@ public class GrandchildTable
 
             var insertMethods = new StringBuilder();
             var updateMethods = new StringBuilder();
-            
-            foreach(var mappedTable in builder.MappedTables)
+
+            foreach (var mappedTable in builder.MappedTables)
             {
                 insertMethods.AppendLine(mappedTable.InsertStringMethod);
                 updateMethods.AppendLine(mappedTable.UpdateStringMethod);

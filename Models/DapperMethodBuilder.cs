@@ -1,11 +1,11 @@
-﻿using System.Data.Common;
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
 
 namespace DapperSqlConstructor.Models
 {
     /// <summary>
-    /// Class has a functionality for constructing select, insert and update request dapper method for tables and models wich mepped for them.
+    /// Describes metadata about a SQL tables and their's corresponding C# models.
+    /// Stores parsed table definition, related class name, column-to-property mappings, and foreign key references.
     /// </summary>
     public class DapperMethodBuilder
     {
@@ -20,7 +20,7 @@ namespace DapperSqlConstructor.Models
         public string TableScriptString { get; set; }
 
         /// <summary>
-        /// String with model wich mapped for table
+        /// String with model which mapped for table
         /// </summary>
         public string MappedClassesString { get; set; }
 
@@ -67,22 +67,57 @@ namespace DapperSqlConstructor.Models
             PrefixValueChar = prefixValue;
         }
 
+        #region Regex patterns
+
+        /// <summary>
+        /// Pattern get all table part from script
+        /// </summary>
+        private readonly Regex tableKeyWordPart = new Regex("table|[)]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        /// <summary>
+        /// Pattern analyze table from script
+        /// </summary>
+        private readonly Regex tablePart = new Regex("table\\s[a-zA-Z0-9_]+\\s", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        /// <summary>
+        /// Pattern which analyze Foreign key
+        /// </summary>
+        private readonly Regex foreignKeyPart = new Regex("FOREIGN\\sKEY\\s*\\(\\s*(.*?)\\s*\\).*?REFERENCES\\s*?(.*?)\\s*?\\(\\s*?(.*?)\\s*?\\)",
+                                               RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
+
+        /// <summary>
+        /// Pattern which analyze data for classes
+        /// </summary>
+        private readonly Regex commentClassPart = new Regex("\\(\\s*?Table:\\s*?(.*?)\\).*?public class (\\w+)", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
+
+        /// <summary>
+        /// Pattern which analyze data for properties
+        /// </summary>
+        private readonly Regex commentPropertyPart = new Regex("\\(\\s*?Column:\\s*?(.*?)\\).*?public\\s*?[\\w\\?<>]+\\s*?(\\w+)\\s*?{\\s*?get;\\s*?set;\\s*?}",
+                                             RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
+
+        /// <summary>
+        /// Pattern properties part which describe it
+        /// </summary>
+        private readonly Regex propertiesPartRegex = new Regex("///\\s*?<summary>.*?}\\s*}", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
+
+        /// <summary>
+        /// Pattern table part in script
+        /// </summary>
+        private readonly Regex tablesPartsRegex = new Regex("table.*?[)];", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
+
+        #endregion
+
         /// <summary>
         /// Parse scripts for tables and get general info.
         /// </summary>
-        public void ParseTableScripts()
+        private void ParseTableScripts()
         {
             //Matches only tables parts of script
-            var matches = Regex.Matches(TableScriptString, "table.*?[)];", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            var matches = tablesPartsRegex.Matches(TableScriptString);
 
             if (matches.Any())
             {
-                //Initialise regex patterns
-                var tableKeyWordPart = new Regex("table|[)]", RegexOptions.IgnoreCase);
-                var tablePart = new Regex("table\\s[a-zA-Z0-9_]+\\s", RegexOptions.IgnoreCase);
-                var foreignKeyPart = new Regex("FOREIGN\\sKEY\\s*\\(\\s*(.*?)\\s*\\).*?REFERENCES\\s*?(.*?)\\s*?\\(\\s*?(.*?)\\s*?\\)",
-                                               RegexOptions.IgnoreCase | RegexOptions.Singleline);
-
                 string[] keyWords = new string[] { "CONSTRAINT", "FOREIGN", "REFERENCES", "ON", "PRIMARY", "DELETE", "CASCADE", "UNIQUE" };
 
                 //Loop tables matches
@@ -98,10 +133,18 @@ namespace DapperSqlConstructor.Models
 
                     //Get text for only table
                     var tableMatch = tablePart.Match(match.Value);
+
+                    if(tableMatch == null || String.IsNullOrEmpty(tableMatch.Value))
+                        continue;
+
                     genTable.TableName = tableKeyWordPart.Replace(tableMatch.Value, "", 1).Trim();
 
+                    //find start and end columns part in table script 
                     var startPoint = match.Value.IndexOf("(");
                     var endPoint = match.Value.IndexOf(");");
+
+                    if (startPoint == -1 || endPoint == -1 || startPoint + 1 >= endPoint)
+                        continue;
 
                     //Get columns for tables
                     var listColumn = match.Value.Substring(startPoint + 1, endPoint - startPoint - 1).Replace("\r", " ").Replace("\t", " ")
@@ -118,14 +161,15 @@ namespace DapperSqlConstructor.Models
                         }
                     }
 
-                    //Get data about foreign keyses
-                    var foreighKeyMatches = foreignKeyPart.Matches(match.Value);
+                    //Extract foreign key relationships from table sctipt and build reference mappings.
+                    var foreignKeyMatches = foreignKeyPart.Matches(match.Value);
 
-                    if (foreighKeyMatches.Any())
+                    if (foreignKeyMatches.Any())
                     {
                         genTable.ReferencesTables = new List<RelatedTableModel>();
 
-                        foreach (Match foreignKeyMatch in foreighKeyMatches)
+                        //Loop foreign key parts
+                        foreach (Match foreignKeyMatch in foreignKeyMatches)
                         {
                             if (foreignKeyMatch.Groups.Count < 3)
                                 continue;
@@ -162,18 +206,12 @@ namespace DapperSqlConstructor.Models
         /// <summary>
         /// Parse models for tables and matches properties for columns
         /// </summary>
-        public void ParseModelString()
+        private void ParseModelString()
         {
-
-            var matches = Regex.Matches(MappedClassesString, "///\\s*?<summary>.*?}\\s*}", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            var matches = propertiesPartRegex.Matches(MappedClassesString);
 
             if (matches.Any())
             {
-                //Initialise regex patterns
-                var commentClassPart = new Regex("\\(\\s*?Table:\\s*?(.*?)\\).*?public class (\\w+)", RegexOptions.IgnoreCase | RegexOptions.Singleline);
-                var commentPropertyPart = new Regex("\\(\\s*?Column:\\s*?(.*?)\\).*?public\\s*?[\\w\\?<>]+\\s*?(\\w+)\\s*?{\\s*?get;\\s*?set;\\s*?}",
-                                                     RegexOptions.IgnoreCase | RegexOptions.Singleline);
-
                 foreach (Match match in matches)
                 {
                     var tableDataStr = commentClassPart.Match(match.Value);
@@ -182,6 +220,7 @@ namespace DapperSqlConstructor.Models
                     if (tableDataStr.Groups.Count <= 2)
                         continue;
 
+                    // Get related data of table from comment
                     var tableName = tableDataStr.Groups[1].Value?.Trim();
                     var className = tableDataStr.Groups[2].Value?.Trim();
 
@@ -197,6 +236,7 @@ namespace DapperSqlConstructor.Models
                         if (propertyDataStr.Groups.Count <= 2)
                             continue;
 
+                        // Get related data of column from comment
                         var colRelated = propertyDataStr.Groups[1].Value?.Trim();
                         var propName = propertyDataStr.Groups[2].Value?.Trim();
 
@@ -210,7 +250,7 @@ namespace DapperSqlConstructor.Models
         /// <summary>
         /// This method construct select request through all tables
         /// </summary>
-        public void ConstructSqlSelectRequest()
+        private void ConstructSqlSelectRequest()
          {
             var indexTable = 1;
             var parentAliasTable = $"t{indexTable}";
@@ -218,28 +258,30 @@ namespace DapperSqlConstructor.Models
             StringBuilder sqlScript = new StringBuilder("SELECT ");
 
             var mainTable = MappedTables.FirstOrDefault(x => x.ReferencesTables == null);
-            //var selectMethodPart = new StringBuilder();
-            //var simpleSelectPart = new StringBuilder();
-            var joinPart = new StringBuilder();
 
-            _queueSelectTables = new Queue<string>();
-            _queueSelectTables.Enqueue(mainTable.TableName);
-
-            var selectMethodParts = mainTable.Columns.Where(x => !String.IsNullOrEmpty(x.Key) && !String.IsNullOrEmpty(x.Value))
-                                                    .Select(x => $" {parentAliasTable}.{x.Key} AS {{nameof({mainTable.RelatedClass}.{x.Value})}}").ToList();
-            var simpleSelectSelectParts = mainTable.Columns.Select(x => $" {parentAliasTable}.{x.Key} ").ToList();
-
-            var childTables = MappedTables.Where(x => x.ReferencesTables != null && x.ReferencesTables.Any(y => y.RelatedTable == mainTable.TableName));
-
-            if(childTables.Any())
+            if(mainTable != null)
             {
-                ConstructChildTableScript(childTables, mainTable.TableName, parentAliasTable, joinPart, selectMethodParts, simpleSelectSelectParts, ref indexTable);
-            }
+                var joinPart = new StringBuilder();
 
-            _sqlSelectRequestMethod = new StringBuilder("SELECT ").AppendLine(string.Join(",\n", selectMethodParts)).Append($" FROM {mainTable.TableName} {parentAliasTable} ")
-                                     .AppendLine(joinPart.ToString()).ToString();
-            _sqlSelectRequestSimple = new StringBuilder("SELECT ").AppendLine(string.Join(",\n", simpleSelectSelectParts)).Append($" FROM {mainTable.TableName} {parentAliasTable} ")
-                                     .AppendLine(joinPart.ToString()).ToString();
+                _queueSelectTables = new Queue<string>();
+                _queueSelectTables.Enqueue(mainTable.TableName);
+
+                var selectMethodParts = mainTable.Columns.Where(x => !String.IsNullOrEmpty(x.Key) && !String.IsNullOrEmpty(x.Value))
+                                                        .Select(x => $" {parentAliasTable}.{x.Key} AS {{nameof({mainTable.RelatedClass}.{x.Value})}}").ToList();
+                var simpleSelectSelectParts = mainTable.Columns.Select(x => $" {parentAliasTable}.{x.Key} ").ToList();
+
+                var childTables = MappedTables.Where(x => x.ReferencesTables != null && x.ReferencesTables.Any(y => y.RelatedTable == mainTable.TableName));
+
+                if (childTables.Any())
+                {
+                    ConstructChildTableScript(childTables, mainTable.TableName, parentAliasTable, joinPart, selectMethodParts, simpleSelectSelectParts, ref indexTable);
+                }
+
+                _sqlSelectRequestMethod = new StringBuilder("SELECT ").AppendLine(string.Join(",\n", selectMethodParts)).Append($" FROM {mainTable.TableName} {parentAliasTable} ")
+                                         .AppendLine(joinPart.ToString()).ToString();
+                _sqlSelectRequestSimple = new StringBuilder("SELECT ").AppendLine(string.Join(",\n", simpleSelectSelectParts)).Append($" FROM {mainTable.TableName} {parentAliasTable} ")
+                                         .AppendLine(joinPart.ToString()).ToString();
+            }
         }
 
         /// <summary>
@@ -248,9 +290,10 @@ namespace DapperSqlConstructor.Models
         /// <param name="childTables">Related table data</param>
         /// <param name="parentTName">Parent table name</param>
         /// <param name="parentAliasTable">Parent table alias</param>
-        /// <param name="indexTable">Number of table in sequences</param>
         /// <param name="joinPart">Join part of request</param>
-        /// <param name="selectMethodPart">Select part of request</param>
+        /// <param name="selectMethodParts">Select part of request</param>
+        /// <param name="simpleSelectSelectParts">Select part of request (only for select script)</param>
+        /// <param name="indexTable">Number of table in sequences</param>
         private void ConstructChildTableScript(IEnumerable<MappedTableModel> childTables, string parentTName, string parentAliasTable, StringBuilder joinPart, 
                                                List<string> selectMethodParts, List<string> simpleSelectSelectParts, ref int indexTable)
         {
@@ -289,43 +332,45 @@ namespace DapperSqlConstructor.Models
         }
 
         /// <summary>
-        /// Construct select dapper method
+        /// Generates an SELECT method for each mapped table and its model using Dapper syntax.
         /// </summary>
         private void ConstructDapperSelectMethod()
         {
             var mainTable = MappedTables.FirstOrDefault(x => x.ReferencesTables == null);
 
-            var generalTypeStr = new StringBuilder();
-            var argumentsFuncPart = new StringBuilder();
-            var splitStr = new StringBuilder();
-
-            int tableIdx = 1;
-            foreach (var table in _queueSelectTables)
+            if(mainTable != null)
             {
-                var tableData = MappedTables.FirstOrDefault(x => x.TableName == table);
+                var generalTypeStr = new StringBuilder();
+                var argumentsFuncPart = new StringBuilder();
+                var splitStr = new StringBuilder();
 
-                generalTypeStr.Append($"{tableData.RelatedClass}, ");
-
-                argumentsFuncPart.Append($"obj{tableIdx}");
-
-                var firstColumn = tableData.Columns.First();
-                splitStr.Append($"{firstColumn.Value}");
-
-                if (table != _queueSelectTables.Last())
+                int tableIdx = 1;
+                foreach (var table in _queueSelectTables)
                 {
-                    argumentsFuncPart.Append(',');
-                    splitStr.Append(',');
+                    var tableData = MappedTables.FirstOrDefault(x => x.TableName == table);
+
+                    generalTypeStr.Append($"{tableData.RelatedClass}, ");
+
+                    argumentsFuncPart.Append($"obj{tableIdx}");
+
+                    var firstColumn = tableData.Columns.First();
+                    splitStr.Append($"{firstColumn.Value}");
+
+                    if (table != _queueSelectTables.Last())
+                    {
+                        argumentsFuncPart.Append(',');
+                        splitStr.Append(',');
+                    }
+
+                    tableIdx++;
                 }
 
-                tableIdx++;
-            }
+                var firstQueue = _queueSelectTables.First();
+                var firstTableData = MappedTables.FirstOrDefault(x => x.TableName == firstQueue);
 
-            var firstQueue = _queueSelectTables.First();
-            var firstTableData = MappedTables.FirstOrDefault(x => x.TableName == firstQueue);
+                generalTypeStr.Append($"{firstTableData.RelatedClass}");
 
-            generalTypeStr.Append($"{firstTableData.RelatedClass}");
-
-            _sqlSelectMethod = $@"
+                _sqlSelectMethod = $@"
 public async Task<IEnumerable<{mainTable.RelatedClass}>> Get{mainTable.RelatedClass}List()
 {{
       using var connection = new SqlConnection(_connectionString);
@@ -339,11 +384,11 @@ public async Task<IEnumerable<{mainTable.RelatedClass}>> Get{mainTable.RelatedCl
       }},
       splitOn: ""{splitStr.ToString()}"");
 }}";
-
+            }
         }
 
         /// <summary>
-        /// Construct insert dapper method, for every table
+        /// Generates an INSERT method for each mapped table and its model using Dapper syntax.
         /// </summary>
         private void ConstructDapperInsertMethod()
         {
@@ -386,7 +431,7 @@ public async Task Insert{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} ite
         }
 
         /// <summary>
-        /// Construct update dapper method, for every table
+        /// Generates an UPDATE method for each mapped table and its model using Dapper syntax.
         /// </summary>
         private void ConstructDapperUpdateMethod()
         {
@@ -427,6 +472,9 @@ public async Task Update{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} ite
             }
         }
 
+        /// <summary>
+        /// Constract SELECT, INSERT, UPDATE methods
+        /// </summary>
         public void ParseTableProperties()
         {
             ParseTableScripts();
@@ -439,7 +487,7 @@ public async Task Update{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} ite
     }
 
     /// <summary>
-    /// Class wich describes information about table and mapped model. This class consist disassembled information for scripts for table and class.
+    /// Class which describes information about table and mapped model. This class consist disassembled information for scripts for table and class.
     /// Object has information about mapping properties and columns, mapping information about table and refer class. info about references table etc.
     /// </summary>
     public class MappedTableModel
@@ -476,7 +524,7 @@ public async Task Update{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} ite
     }
 
     /// <summary>
-    /// Object describes information about references table, columns wich is foreighn keyses.
+    /// Object describes information about references table, columns which is foreighn keys.
     /// </summary>
     public class RelatedTableModel
     {
