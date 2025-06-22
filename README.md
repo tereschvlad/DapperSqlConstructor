@@ -12,6 +12,7 @@ Application parse sql scripts for creating tables and models which related for t
 - Must be only one primary table (without foreign key).
 
 #Example for tables script
+
 ```SQL
 
 CREATE TABLE parent_table (
