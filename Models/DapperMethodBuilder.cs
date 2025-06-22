@@ -27,7 +27,7 @@ namespace DapperSqlConstructor.Models
         /// <summary>
         /// Info about tables and related classes
         /// </summary>
-        public List<MappedTableModel> MappedTables { get; set; }
+        public List<MappedTableModel> MappedTables { get; } = new ();
 
         /// <summary>
         /// Queue with the sequence of table names used in the SQL script
@@ -319,8 +319,8 @@ namespace DapperSqlConstructor.Models
                 joinPart.AppendLine(joinStr.ToString()).Append(joinCondition);
 
                 selectMethodParts.AddRange(childTable.Columns.Where(x => !String.IsNullOrEmpty(x.Key) && !String.IsNullOrEmpty(x.Value))
-                                                    .Select(x => $" {parentAliasTable}.{x.Key} AS {{nameof({childTable.RelatedClass}.{x.Value})}}"));
-                simpleSelectSelectParts.AddRange(childTable.Columns.Select(x => $" {parentAliasTable}.{x.Key} "));
+                                                    .Select(x => $" {childTableAlias}.{x.Key} AS {{nameof({childTable.RelatedClass}.{x.Value})}}"));
+                simpleSelectSelectParts.AddRange(childTable.Columns.Select(x => $" {childTableAlias}.{x.Key} "));
 
                 var nextChildTables = MappedTables.Where(x => x.ReferencesTables != null && x.ReferencesTables.Any(y => y.RelatedTable == childTable.TableName));
 
@@ -475,7 +475,7 @@ public async Task Update{dataInfo.RelatedClass}Async({dataInfo.RelatedClass} ite
         /// <summary>
         /// Constract SELECT, INSERT, UPDATE methods
         /// </summary>
-        public void ParseTableProperties()
+        public void ConstructMethods()
         {
             ParseTableScripts();
             ParseModelString();

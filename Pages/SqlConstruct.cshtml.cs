@@ -285,6 +285,8 @@ public class GrandchildTable
 
             var builder = new DapperMethodBuilder(SqlScripts, ConnectedClasses);
 
+            builder.ConstructMethods();
+
             SelectMethod = builder.SqlSelectMethod;
             SelectRequest = builder.SqlSelectRequestSimple;
             ExampleTableSqlScripts = builder.TableScriptString;
