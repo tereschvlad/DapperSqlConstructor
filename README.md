@@ -11,7 +11,7 @@ Application parse sql scripts for creating tables and models which related for t
 - If in your structure the primary table has a foreign key, drop it as it isn't nessasary for this case.
 - Must be only one primary table (without foreign key).
 
-#Example for tables script
+# Example for tables script
 
 ```SQL
 
