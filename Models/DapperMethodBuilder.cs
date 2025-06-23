@@ -59,7 +59,7 @@ namespace DapperSqlConstructor.Models
         /// </summary>
         public string SqlSelectMethod => _sqlSelectMethod;
 
-        public DapperMethodBuilder(string createdTableScript, string mappedClasses, char prefixValue = ':')
+        public DapperMethodBuilder(string createdTableScript, string mappedClasses, char prefixValue = '@')
         {
             TableScriptString = createdTableScript;
             MappedClassesString = mappedClasses;
