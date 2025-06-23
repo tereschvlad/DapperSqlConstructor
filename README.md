@@ -205,4 +205,7 @@ CREATE TABLE child_table2 (
     }
 
 ```
+# How it work.
+After you sending files you get a Dapper methods which doing select through all related tables, simple select script and method for UPDATE and INSERT into all tables. 
+
 
