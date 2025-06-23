@@ -48,7 +48,10 @@ CREATE TABLE child_table2 (
 );
 
 ```
-
+# Rules for sending files with related models. 
+- Send only models which related for sended tables.
+- Write related tables for classes into comments for class, the related table must be writed like this "(Table: Related_Table)".
+- Write related columns for properties into comments for property, the related table must be weited like this "(Column: Related_Column)"
 
 
 
