@@ -56,7 +56,7 @@ CREATE TABLE child_table2 (
 # Example for C# class models
 
 ```C#
-	/// <summary>
+    /// <summary>
     /// Represents the parent_table in the database.
     /// (Table: parent_table)
     /// </summary>
