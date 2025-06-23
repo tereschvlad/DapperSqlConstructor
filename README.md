@@ -2,8 +2,7 @@
 
 **Automatically generate C# methods for Dapper based on your SQL schema and C# models.**
 
-This project was created for reduce the amount of routine work (mapping) for .Net developers who use Dapper to work with databases.
-This resource give an opportunity to construct methods for simple related table, and to do work with mapping between columns and properties less.
+DapperSqlConstructor is a tool designed to reduce boilerplate code for .NET developers using Dapper. It parses your SQL table creation scripts and corresponding C# model files to automatically generate methods for `SELECT`, `INSERT`, and `UPDATE` operations, including support for basic table relationships. This minimizes manual mapping and lets you focus on your application's business logic.
 
 Application parse sql scripts for creating tables and models which related for those tables and build methods for SELECT, UPDATE and INSERT.
 
