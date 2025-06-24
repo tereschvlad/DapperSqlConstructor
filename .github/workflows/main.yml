@@ -38,7 +38,8 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }} 
-            
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
 
 
