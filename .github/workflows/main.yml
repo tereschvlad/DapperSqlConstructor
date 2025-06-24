@@ -30,16 +30,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Determine image tag
-        id: determine_tag
-        run: |
-          TAG="latest"
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            TAG="${{ github.ref_name }}"
-          elif [[ "${{ github.ref }}" == refs/heads/main || "${{ github.ref }}" == refs/heads/develop ]]; then
-            TAG="${{ github.sha }}"
-          fi
-          echo "IMAGE_TAG=${TAG}" >> $GITHUB_OUTPUT
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE_PATH }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }} 
+            
 
 
 
