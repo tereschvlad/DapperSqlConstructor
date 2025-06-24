@@ -10,7 +10,7 @@ on:
 
 env:
   PROJECT_NAME: DapperSqlConstructor
-  DOCKERFILE_PATH: .
+  DOCKERFILE_PATH: ./src/DapperSqlConstructor/Dockerfile
   IMAGE_NAME: ${{ secrets.DOCKERHUB_REPOSITORY }}
 
 jobs:
