@@ -12,7 +12,6 @@ env:
   PROJECT_NAME: DapperSqlConstructor
   DOCKERFILE_PATH: .
   IMAGE_NAME: ${{ secrets.DOCKERHUB_REPOSITORY }}
-
 jobs:
   build-and-push-docker-image:
     runs-on: ubuntu-latest
