@@ -3,12 +3,12 @@ WORKDIR /app
 EXPOSE 8080
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-WORKDIR /src
-COPY ["DapperSqlConstructor.csproj", "./"]
-RUN dotnet restore "DapperSqlConstructor.csproj"
+COPY ["src/DapperSqlConstructor/DapperSqlConstructor.csproj", "src/DapperSqlConstructor/"]
+RUN dotnet restore "src/DapperSqlConstructor/DapperSqlConstructor.csproj"
 
-WORKDIR "/src/"
-COPY . .
+COPY src/DapperSqlConstructor/ src/DapperSqlConstructor/
+
+WORKDIR /app/src/DapperSqlConstructor
 
 RUN dotnet build "DapperSqlConstructor.csproj" -c Release -o /app/build
 
