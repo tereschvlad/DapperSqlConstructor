@@ -12,7 +12,7 @@ env:
   PROJECT_NAME: DapperSqlConstructor
   DOCKERFILE_PATH: .
   IMAGE_NAME: ${{ secrets.DOCKERHUB_REPOSITORY }}
-  
+
 jobs:
   build-and-push-docker-image:
     runs-on: ubuntu-latest
@@ -37,6 +37,6 @@ jobs:
           file: ${{ env.DOCKERFILE_PATH }}
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }} 
+            ${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
