@@ -4,6 +4,9 @@
 
 DapperSqlConstructor is a tool designed to reduce boilerplate code for .NET developers using Dapper. It parses your SQL table creation scripts and corresponding C# model files to automatically generate methods for `SELECT`, `INSERT`, and `UPDATE` operations, including support for basic table relationships. This minimizes manual mapping and lets you focus on your application's business logic.
 
+# How to use it
+You can run the application in a docker container and [Docker hub](https://hub.docker.com/r/tereschvlad/dappersqlconstructor) and explore how it works!
+
 # Rules for sending files with scripts.
 - Scripts for table should be simple without written constraints in script of table without other rules for work with data like "CASCADE", better have only table, columns and rules for foreign keys.
 - The tables should be in the order of relationship, the first table should be the one that has no secondary keys and no bindings to other tables (primary). Then the children of this table that have secondary keys are related to the main one, then the tables related to them, etc.
