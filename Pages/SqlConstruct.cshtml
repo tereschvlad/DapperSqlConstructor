@@ -23,23 +23,12 @@
         <div class="container my-5">
             <h2>How it works!</h2>
             <p>
-                You should load file where will be C# class (model) which describe table. In comment for table should has name of table and in 
-                property comments should has a name of related column. Property for data from related table should has comment with only name of related table.
-                The script for table should has only scripts for creating table. There should be only columns and foreign key without other constraint and other key words.
-                You can see examples in right part of sith web page. "Example for sql scripts" - with examples for creating tables and "Example for related models" - with 
-                examples for realted models.After click on the button you get the result of processing. In "Result select method" - should show the result of creating select dapper method.
-                In "Result of insert methods" - show the result of creating insert methods. In "Result of update methods" - show the result of creating update methods.
-                Drop columns and other key words.
+                You must load file with scripts for tables and file with C# related models. For this files will construct Dapper methods for "INSERT", "UPDATE" and "SELECT".
+                All this data will be in right part of this page. See mode information in <a href="https://github.com/tereschvlad/DapperSqlConstructor">GitHub</a>
             </p>
         </div>
 	</div>
 	<div class="col">
-        @if(ViewBag.Error != null)
-        {
-            <div class="alert alert-danger" role="alert">
-                ViewBag["Error"]
-            </div>
-        }
         <div class="accordion w-100" id="accordionSql">
             <div class="accordion-item">
                 <h2 class="accordion-header" id="headingOne">
