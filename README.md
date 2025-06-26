@@ -208,4 +208,4 @@ CREATE TABLE child_table2 (
 
 ```
 # How it works.
-After you sending files, the tool generates Dapper methods which doing select through all related tables, simple select script and method for UPDATE and INSERT into all tables. 
+After you sending files, the tool generates Dapper methods which doing select through all related tables, simple SELECT script and method for UPDATE and INSERT into all tables. 
